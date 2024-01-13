@@ -19,6 +19,7 @@ import io
 from pathlib import Path
 
 from modal import Image, Mount, Stub, asgi_app, build, enter, gpu, method
+from modal.functions import FunctionCall
 
 # ## Define a container image
 #
@@ -54,6 +55,7 @@ with sdxl_image.imports():
     import torch
     from diffusers import DiffusionPipeline, StableVideoDiffusionPipeline
     from huggingface_hub import snapshot_download
+    import moviepy.editor as mp
 
 # ## Load model and run inference
 #
@@ -143,9 +145,12 @@ class Model:
         frames = self.video_pipeline(image).frames[0]
 
         frames[0].save('output.gif',
-            save_all=True, append_images=frames[1:], optimize=False, duration=40, loop=0)
+            save_all=True, append_images=frames[1:], optimize=False, duration=200, loop=0)
 
-        with open('output.gif', "rb") as fh:
+        clip = mp.VideoFileClip("output.gif")
+        clip.write_videofile("output.mp4")
+
+        with open('output.mp4', "rb") as fh:
             buf = io.BytesIO(fh.read())
 
         return buf.getvalue()
@@ -184,7 +189,7 @@ def main(prompt: str):
     if not dir.exists():
         dir.mkdir(exist_ok=True, parents=True)
 
-    output_path = dir / "output.gif"
+    output_path = dir / "output.mp4"
     print(f"Saving it to {output_path}")
     with open(output_path, "wb") as f:
         f.write(image_bytes)
@@ -205,6 +210,7 @@ def main(prompt: str):
 )
 @asgi_app()
 def app():
+    import fastapi
     from fastapi import FastAPI
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
@@ -221,14 +227,6 @@ def app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    @web_app.get("/infer/{prompt}")
-    async def infer(prompt: str):
-        image_bytes = Model().inference.remote(prompt)
-
-        return Response(image_bytes, media_type="image/gif")
-
-    
     from pydantic import BaseModel
 
     class MetadataRequest(BaseModel):
@@ -240,5 +238,20 @@ def app():
     async def handle_metadata(info: MetadataRequest):
         metadata = get_metadata.remote(info.user_info_csv, info.user_goal)
         return Response(json.dumps(metadata), media_type="text/json")
+    
+    @web_app.get("/infer/{prompt}")
+    async def accept_job(prompt: str):
+        call = Model().inference.spawn(prompt)
+        return {"call_id": call.object_id}
+
+    @web_app.get("/result/{call_id}")
+    async def poll_results(call_id: str):
+        function_call = FunctionCall.from_id(call_id)
+        try:
+            image_bytes = function_call.get(timeout=0)
+            return Response(image_bytes, media_type="video/mp4")
+        except TimeoutError:
+            http_accepted_code = 202
+            return fastapi.responses.JSONResponse({}, status_code=http_accepted_code)
 
     return web_app
