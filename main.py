@@ -41,6 +41,11 @@ sdxl_image = (
         "accelerate~=0.26.1",
         "safetensors~=0.4.1",
     )
+    .apt_install("imagemagick")
+    .run_commands("sed -i '/@/s/^/<!-- /; /@/s/$/ -->/' /etc/ImageMagick-6/policy.xml")
+    .pip_install("moviepy~=1.0.3")
+    .pip_install("pytube")
+    .pip_install("youtube_search")
 )
 
 stub = Stub("stable-diffusion-xl")

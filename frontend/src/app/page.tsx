@@ -11,6 +11,7 @@ type AdMetadata = {
   music: string;
   text: string;
   "video-prompt": string;
+  name: string;
 };
 
 const UserAd = ({
@@ -38,11 +39,11 @@ const UserAd = ({
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-2">User {userNum + 1}</h2>
+      <h2 className="text-xl font-bold mb-2">{metadata.name}</h2>
       <div>
         {sceneImage !== null && (
           <div>
-            <div className="aspect-square flex items-center justify-center rounded-md bg-gray-50">
+            <div className="aspect-[1024/576] flex items-center justify-center rounded-md bg-gray-50">
               {sceneImage === "" ? (
                 <span>Generating Image...</span>
               ) : (
@@ -56,6 +57,7 @@ const UserAd = ({
           </div>
         )}
       </div>
+      <div className="mt-1 text-sm">{metadata.text}</div>
       <div className="text-gray-600 mt-3 text-sm">{metadata.idea}</div>
 
       <div className="h-3"></div>
@@ -195,7 +197,7 @@ export default function Home() {
           Generating user metadata...
         </div>
       )}
-      <div className="grid grid-cols-5 gap-x-8">
+      <div className="grid grid-cols-3 gap-x-8">
         {metadata !== null &&
           metadata.map((user, i) => (
             <UserAd metadata={user} key={i} userNum={i} />
