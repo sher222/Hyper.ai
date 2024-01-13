@@ -28,9 +28,23 @@ const UserAd = ({
     const res = await fetch(
       `${MODAL_ENDPOINT}/infer/${metadata["video-prompt"]}`
     );
+    const call_id = ((await res.json()) as any).call_id;
 
-    const blob = await res.blob();
-    setSceneImage(URL.createObjectURL(blob));
+    const try_get = async () => {
+      const res = await fetch(`${MODAL_ENDPOINT}/result/${call_id}`);
+      if (res.status === 202) {
+        // still loading
+        setTimeout(try_get, 1000);
+      } else if (res.status === 200) {
+        const blob = await res.blob();
+        setSceneImage(URL.createObjectURL(blob));
+      } else {
+        console.error("failed to fetch");
+        console.error(res);
+      }
+    };
+
+    setTimeout(try_get, 1000);
   };
 
   useEffect(() => {
@@ -197,7 +211,7 @@ export default function Home() {
           Generating user metadata...
         </div>
       )}
-      <div className="grid grid-cols-3 gap-x-8">
+      <div className="grid grid-cols-3 gap-x-8 gap-y-8">
         {metadata !== null &&
           metadata.map((user, i) => (
             <UserAd metadata={user} key={i} userNum={i} />
