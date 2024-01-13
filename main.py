@@ -138,7 +138,7 @@ class Model:
         frames = self.video_pipeline(image).frames[0]
 
         frames[0].save('output.gif',
-            save_all=True, append_images=frames[1:], optimize=False, duration=40, loop=0)
+            save_all=True, append_images=frames[1:], optimize=False, duration=100, loop=0)
 
         with open('output.gif', "rb") as fh:
             buf = io.BytesIO(fh.read())
