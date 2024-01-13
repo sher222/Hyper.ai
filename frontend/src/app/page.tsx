@@ -17,9 +17,13 @@ type AdMetadata = {
 const UserAd = ({
   metadata,
   userNum,
+  companyName,
+  companyDescription,
 }: {
   metadata: AdMetadata;
   userNum: number;
+  companyName: string;
+  companyDescription: string;
 }) => {
   const [sceneImage, setSceneImage] = useState<string | null>(null);
 
@@ -31,10 +35,20 @@ const UserAd = ({
     const call_id = ((await res.json()) as any).call_id;
 
     const try_get = async () => {
-      const res = await fetch(`${MODAL_ENDPOINT}/result/${call_id}`);
+      const res = await fetch(`${MODAL_ENDPOINT}/result/${call_id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          caption: metadata.text,
+          company_name: companyName,
+          company_description: companyDescription,
+        }),
+      });
       if (res.status === 202) {
         // still loading
-        setTimeout(try_get, 1000);
+        setTimeout(try_get, 5000);
       } else if (res.status === 200) {
         const blob = await res.blob();
         setSceneImage(URL.createObjectURL(blob));
@@ -44,7 +58,7 @@ const UserAd = ({
       }
     };
 
-    setTimeout(try_get, 1000);
+    setTimeout(try_get, 5000);
   };
 
   useEffect(() => {
@@ -61,10 +75,11 @@ const UserAd = ({
               {sceneImage === "" ? (
                 <span>Generating Image...</span>
               ) : (
-                <img
+                <video
                   className="mx-auto rounded-md"
                   src={sceneImage}
-                  alt="generated scene"
+                  autoPlay
+                  loop
                 />
               )}
             </div>
@@ -87,6 +102,10 @@ const UserAd = ({
 };
 
 export default function Home() {
+  const [companyName, setCompanyName] = useState("Sage");
+  const [companyDescription, setCompanyDescription] = useState(
+    "Sage is a shopping agent that helps people easily shop and find personalized items"
+  );
   const [adGoal, setAdGoal] = useState(
     "download the app sage which is a shopping agent that helps people easily shop and find personalized items"
   );
@@ -135,6 +154,40 @@ export default function Home() {
             handleSubmit();
           }}
         >
+          <div className="">
+            <label
+              htmlFor="company_name"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Company Name
+            </label>
+            <div className="mt-2">
+              <input
+                id="company_name"
+                name="company_name"
+                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="">
+            <label
+              htmlFor="company_desc"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Company Description
+            </label>
+            <div className="mt-2">
+              <input
+                id="company_desc"
+                name="company_desc"
+                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                value={companyDescription}
+                onChange={(e) => setCompanyDescription(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="">
             <label
               htmlFor="goal"
@@ -214,7 +267,13 @@ export default function Home() {
       <div className="grid grid-cols-3 gap-x-8 gap-y-8">
         {metadata !== null &&
           metadata.map((user, i) => (
-            <UserAd metadata={user} key={i} userNum={i} />
+            <UserAd
+              metadata={user}
+              key={i}
+              userNum={i}
+              companyName={companyName}
+              companyDescription={companyDescription}
+            />
           ))}
       </div>
     </div>

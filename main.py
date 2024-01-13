@@ -205,8 +205,23 @@ def main(prompt: str):
 # We can deploy this with `modal deploy stable_diffusion_xl.py`.
 
 
+app_img = (
+    Image.debian_slim()
+    .apt_install(
+        "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "ffmpeg", "libgl1"
+    )
+    .apt_install("imagemagick")
+    .run_commands("sed -i '/@/s/^/<!-- /; /@/s/$/ -->/' /etc/ImageMagick-6/policy.xml")
+    .pip_install("moviepy~=1.0.3")
+    .pip_install("pytube")
+    .pip_install("youtube_search")
+)
+with app_img.imports():
+    from moviepy.editor import *
+
 @stub.function(
     allow_concurrent_inputs=20,
+    image=app_img,
 )
 @asgi_app()
 def app():
@@ -215,7 +230,6 @@ def app():
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
     import json
-    from process_text_and_end_screen import add_text_and_end_screen
 
     web_app = FastAPI()
     origins = [
@@ -245,12 +259,92 @@ def app():
         call = Model().inference.spawn(prompt)
         return {"call_id": call.object_id}
 
+
+
+
+
+
+
+
+
+
+
+
+
+    #  "text": "just did a set of app downloads, feelin' pumped",
+    # given the base video and the text, add it on top of the video
+
+    company_name = "Sage"
+    description = "Shop smarter"
+    base_video = "output.gif"
+    text = "just did a set of app downloads, feelin' pumped"
+
+
+    def add_text_and_end_screen(base_video, text, company_name, description):
+        video_clip = VideoFileClip(base_video)
+        text_clip_width = video_clip.size[0] - 200
+        text_clip = TextClip(
+            text,
+            fontsize=50,
+            font="Arial-Bold",
+            color="white",
+            method="caption",
+            stroke_width=2,
+            stroke_color="black",
+            kerning=-2,
+            size=(text_clip_width, None),
+        )
+        text_clip = text_clip.set_duration(video_clip.duration)
+        final_clip = CompositeVideoClip(
+            [video_clip, text_clip.set_pos(("center", 0.55), relative=True)]
+        )
+
+        # Append another video clip to the end of this one
+        video_size = video_clip.size
+        background_clip = ColorClip(size=video_size, color=(255, 255, 255), duration=2)
+        company_name_clip = TextClip(
+            company_name, font="Arial-Bold", fontsize=60, color="black", size=video_size
+        ).set_duration(2)
+        description_clip = TextClip(
+            description,
+            font="Arial",
+            fontsize=30,
+            color="black",
+            size=video_size,
+            method="caption",
+        ).set_duration(2)
+        end_clip = CompositeVideoClip(
+            [
+                background_clip,
+                company_name_clip.set_pos("center"),
+                description_clip.set_pos("center"),
+            ]
+        )
+
+        # Manually adjust the positions
+        company_name_height = company_name_clip.size[1]
+        description_height = description_clip.size[1]
+        video_height = background_clip.size[1]
+        company_name_y = (video_height - company_name_height - description_height) / 2 + 240
+        description_y = company_name_y + 60
+        end_clip = CompositeVideoClip(
+            [
+                background_clip,
+                company_name_clip.set_position(("center", company_name_y)),
+                description_clip.set_position(("center", description_y)),
+            ]
+        )
+
+        final_clip = concatenate_videoclips([final_clip, end_clip])
+        final_clip.write_videofile("final.mp4")
+
+
     class VideoRequest(BaseModel):
         caption: str
         company_name: str
         company_description: str
 
-    @web_app.get("/result/{call_id}")
+    @web_app.post("/result/{call_id}")
     async def poll_results(call_id, info: VideoRequest):
         function_call = FunctionCall.from_id(call_id)
         try:
@@ -259,7 +353,7 @@ def app():
             with open("output.mp4", "wb") as f:
                 f.write(image_bytes)
 
-            add_text_and_end_screen("output.mp4", info.caption, info.company_name, info.company_description, "final.mp4")
+            add_text_and_end_screen("output.mp4", info.caption, info.company_name, info.company_description)
 
             with open('final.mp4', "rb") as fh:
                 buf = io.BytesIO(fh.read())
