@@ -249,7 +249,7 @@ def app():
         function_call = FunctionCall.from_id(call_id)
         try:
             image_bytes = function_call.get(timeout=0)
-            return Response(image_bytes, media_type="image/gif")
+            return Response(image_bytes, media_type="video/mp4")
         except TimeoutError:
             http_accepted_code = 202
             return fastapi.responses.JSONResponse({}, status_code=http_accepted_code)
