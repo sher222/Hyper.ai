@@ -4,8 +4,6 @@ please give me
 -text meme in video (all lowercase, funny, original, witty)
 -video prompt (using the viewer demographic information to get a model figure that is similar to the viewer to perform some action related to the text meme. the action should NOT include anything audio-related like singing. no specific words. it should only be something visual and VERY SIMPLE and SHORT. NO COUNTING, only GENERIC GENERAL IDEA with ONE VERB less than 5 words)
 -music search query (you can either put a SPECIFIC song or if you can't think of a specific one, choose from one of the trending tiktok audios below. The output should either be <song name, artist name> or <number relating to audio below>)
-1: tropical house beat
-2: dark violin music
 return your answer in a structured JSON format
 
 example 1:
@@ -15,8 +13,8 @@ viewer's demographics: 13-16 female
 {
 "idea": "use the funny meme of "oui oui baguette" to encourage user to learn french",
 "text": "getting my daily lesson in so i can order oui oui baguettes",
-"video-prompt": "teenage girl holding a baguette",
-"music": "La Vie en Rose" by Édith Piaf”
+"video-prompt": "a pretty, happy teenage (13 - 16 year old) girl in Paris holding a baguette",
+"music": "La Vie en Rose, Édith Piaf”
 }
 
 example 2:
@@ -26,7 +24,7 @@ viewer's demographics: 28-32 male
 {
 "idea": "use the idea of "gains" in both the gym and in life to emphasize how sage is good",
 "text": "only gains day, first hittin' the gym then hittin' sage",
-"video-prompt": "man lifting weights",
+"video-prompt": "a attractive, happy young man (28 - 32 years old) in the gym lifting weights",
 "music": "2"
 }
 
@@ -37,7 +35,7 @@ viewer's demographics: 20-24 female
 {
 "idea": "make a reference to the popular taylor swift song 22 to show how depop is trendy",
 "text": "feeling 22 and fabulous in my depop fit",
-"video-prompt": "young woman dancing",
+"video-prompt": "a happy, atractive young (20-24) woman dancing",
 "music": "22 by Taylor Swift"
 }
 
