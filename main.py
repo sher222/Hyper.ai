@@ -35,19 +35,24 @@ sdxl_image = (
         "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "ffmpeg", "libgl1"
     )
     .pip_install(
-        "diffusers~=0.19",
+        "diffusers~=0.25.0",
         "invisible_watermark~=0.1",
-        "transformers~=4.31",
-        "accelerate~=0.21",
-        "safetensors~=0.3",
+        "transformers~=4.36.2",
+        "accelerate~=0.26.1",
+        "safetensors~=0.4.1",
     )
+    .apt_install("imagemagick")
+    .run_commands("sed -i '/@/s/^/<!-- /; /@/s/$/ -->/' /etc/ImageMagick-6/policy.xml")
+    .pip_install("moviepy~=1.0.3")
+    .pip_install("pytube")
+    .pip_install("youtube_search")
 )
 
 stub = Stub("stable-diffusion-xl")
 
 with sdxl_image.imports():
     import torch
-    from diffusers import DiffusionPipeline
+    from diffusers import DiffusionPipeline, StableVideoDiffusionPipeline
     from huggingface_hub import snapshot_download
 
 # ## Load model and run inference
@@ -59,7 +64,7 @@ with sdxl_image.imports():
 # online for 4 minutes before spinning down. This can be adjusted for cost/experience trade-offs.
 
 
-@stub.cls(gpu=gpu.A10G(), container_idle_timeout=240, image=sdxl_image)
+@stub.cls(gpu=gpu.A100(memory=80), container_idle_timeout=240, image=sdxl_image)
 class Model:
     @build()
     def build(self):
@@ -73,6 +78,10 @@ class Model:
         )
         snapshot_download(
             "stabilityai/stable-diffusion-xl-refiner-1.0",
+            ignore_patterns=ignore,
+        )
+        snapshot_download(
+            "stabilityai/stable-video-diffusion-img2vid-xt",
             ignore_patterns=ignore,
         )
 
@@ -97,6 +106,12 @@ class Model:
             vae=self.base.vae,
             **load_options,
         )
+        load_options = dict(
+            torch_dtype=torch.float16,
+            variant="fp16"
+        )
+        self.video_pipeline = StableVideoDiffusionPipeline.from_pretrained("stabilityai/stable-video-diffusion-img2vid-xt", **load_options)
+        self.video_pipeline.enable_model_cpu_offload()
 
         # Compiling the model graph is JIT so this will increase inference time for the first run
         # but speed up subsequent runs. Uncomment to enable.
@@ -112,6 +127,8 @@ class Model:
             num_inference_steps=n_steps,
             denoising_end=high_noise_frac,
             output_type="latent",
+            height=576,
+            width=1024
         ).images
         image = self.refiner(
             prompt=prompt,
@@ -119,13 +136,35 @@ class Model:
             num_inference_steps=n_steps,
             denoising_start=high_noise_frac,
             image=image,
+            height=576,
+            width=1024
         ).images[0]
 
-        byte_stream = io.BytesIO()
-        image.save(byte_stream, format="PNG")
-        image_bytes = byte_stream.getvalue()
+        frames = self.video_pipeline(image).frames[0]
 
-        return image_bytes
+        frames[0].save('output.gif',
+            save_all=True, append_images=frames[1:], optimize=False, duration=40, loop=0)
+
+        with open('output.gif', "rb") as fh:
+            buf = io.BytesIO(fh.read())
+
+        return buf.getvalue()
+
+
+openai_img = Image.debian_slim().pip_install("openai")
+
+with openai_img.imports():
+    from fetch_metadata import fetch_content_metadata
+
+@stub.function(
+    mounts=[Mount.from_local_dir("data", remote_path="/root/data")],
+    image=openai_img
+)
+def get_metadata(user_csv: str, goal: str):
+    with open("data/csv.csv", "w") as f:
+        f.write(user_csv)
+
+    return fetch_content_metadata("data/csv.csv", goal)
 
 
 # And this is our entrypoint; where the CLI is invoked. Explore CLI options
@@ -134,13 +173,18 @@ class Model:
 
 @stub.local_entrypoint()
 def main(prompt: str):
+#     csv_content = """preferences,age,gender
+# likes taylor swift,12-16,female
+# likes working out,20-24,male"""
+#     print(get_metadata.remote(csv_content, "download the app sage which is a shopping agent that helps people easily shop and find personalized items"))
+
     image_bytes = Model().inference.remote(prompt)
 
     dir = Path("/tmp/stable-diffusion-xl")
     if not dir.exists():
         dir.mkdir(exist_ok=True, parents=True)
 
-    output_path = dir / "output.png"
+    output_path = dir / "output.gif"
     print(f"Saving it to {output_path}")
     with open(output_path, "wb") as f:
         f.write(image_bytes)
@@ -164,6 +208,7 @@ def app():
     from fastapi import FastAPI
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
+    import json
 
     web_app = FastAPI()
     origins = [
@@ -181,6 +226,19 @@ def app():
     async def infer(prompt: str):
         image_bytes = Model().inference.remote(prompt)
 
-        return Response(image_bytes, media_type="image/png")
+        return Response(image_bytes, media_type="image/gif")
+
+    
+    from pydantic import BaseModel
+
+    class MetadataRequest(BaseModel):
+        user_goal: str
+        user_info_csv: str
+
+    
+    @web_app.post("/metadata/")
+    async def handle_metadata(info: MetadataRequest):
+        metadata = get_metadata.remote(info.user_info_csv, info.user_goal)
+        return Response(json.dumps(metadata), media_type="text/json")
 
     return web_app
