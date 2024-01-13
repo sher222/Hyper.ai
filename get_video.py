@@ -9,7 +9,7 @@ def get_video(video_prompt):
 
     response = client.images.generate(
         model="dall-e-3",
-        prompt="a white siamese cat",
+        prompt=video_prompt,
         size="1024x1024",
         quality="standard",
         n=1,
