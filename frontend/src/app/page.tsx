@@ -2,6 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import React from 'react';
+import logo from "./logo_resized.png"
+
 
 const MODAL_ENDPOINT =
   "https://thecodingwizard--stable-diffusion-xl-app.modal.run";
@@ -70,7 +73,35 @@ const UserAd = ({
   );
 };
 
-export default function Home() {
+export  function NavBar(){
+  return (
+    <nav className="bg-white border-gray-200 dark:bg-gray-900" style={{position: "fixed", top: "0", width: "100%"}}>
+    <div className="max-w-screen-xl flex flex-wrap items-center justify-between mx-auto p-4"> 
+      <a className="flex items-center space-x-3 rtl:space-x-reverse">
+        <img src={logo.src} alt="Logo" style={{height: 70}} />
+      </a>
+      <div className="hidden w-full md:block md:w-auto" id="navbar-default">
+        <ul className="font-medium flex flex-col p-4 md:p-0 mt-4 border border-gray-100 rounded-lg bg-gray-50 md:flex-row md:space-x-8 rtl:space-x-reverse md:mt-0 md:border-0 md:bg-white dark:bg-gray-800 md:dark:bg-gray-900 dark:border-gray-700">
+          <li>
+            <a href="#" aria-current="page" style={{color: "white", fontSize: 18}}>Home</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>  
+  )
+}
+export default function HomeWrapper(){
+  return (
+    <div>
+      <NavBar/>
+      <div className="block py-2 px-3 text-white bg-blue-700 rounded md:bg-transparent md:text-blue-700 md:p-0 dark:text-white md:dark:text-blue-500" style={{paddingTop: 100}}>
+        <Home/>
+      </div>
+    </div>
+  )
+}
+export function Home() {
   const [adGoal, setAdGoal] = useState(
     "download the app sage which is a shopping agent that helps people easily shop and find personalized items"
   );
@@ -111,7 +142,7 @@ export default function Home() {
   return (
     <div className="px-8 pb-64">
       <div className="max-w-prose mx-auto">
-        <h1 className="mt-20 text-3xl font-bold">Hyper.ai</h1>
+        <h1 className="mt-20 text-3xl font-bold text-indigo-600">Generate advertisements</h1>
         <form
           className="mt-8 space-y-8"
           onSubmit={(e) => {
@@ -126,6 +157,9 @@ export default function Home() {
             >
               Advertisement Goal
             </label>
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              What&apos;s the goal of this advertisement?
+            </p>
             <div className="mt-2">
               <textarea
                 id="goal"
@@ -136,9 +170,7 @@ export default function Home() {
                 onChange={(e) => setAdGoal(e.target.value)}
               />
             </div>
-            <p className="mt-3 text-sm leading-6 text-gray-600">
-              What&apos;s the goal of this advertisement?
-            </p>
+          
           </div>
           <div className="">
             <label
@@ -147,7 +179,10 @@ export default function Home() {
             >
               User Information
             </label>
-            <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
+            <p className="mt-3 text-sm leading-6 text-gray-600">
+              Upload a csv file for every user you want a video generated for
+            </p>
+            <div className="mt-2 flex justify-center rounded-lg border border-dashed border-indigo-600/25 px-6 py-10">
               <div className="text-center">
                 <div className="flex text-sm leading-6 text-gray-600">
                   {userInfoFile ? (
@@ -158,7 +193,7 @@ export default function Home() {
                         htmlFor="file-upload"
                         className="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-indigo-600 focus-within:ring-offset-2 hover:text-indigo-500"
                       >
-                        <span>Upload a file</span>
+                        <span className="text-indigo-600">Upload a file</span>
                         <input
                           id="file-upload"
                           name="file-upload"
