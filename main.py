@@ -19,6 +19,7 @@ import io
 from pathlib import Path
 
 from modal import Image, Mount, Stub, asgi_app, build, enter, gpu, method
+from modal.functions import FunctionCall
 
 # ## Define a container image
 #
@@ -209,6 +210,7 @@ def main(prompt: str):
 )
 @asgi_app()
 def app():
+    import fastapi
     from fastapi import FastAPI
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
@@ -225,14 +227,6 @@ def app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    @web_app.get("/infer/{prompt}")
-    async def infer(prompt: str):
-        image_bytes = Model().inference.remote(prompt)
-
-        return Response(image_bytes, media_type="image/gif")
-
-    
     from pydantic import BaseModel
 
     class MetadataRequest(BaseModel):
@@ -244,5 +238,20 @@ def app():
     async def handle_metadata(info: MetadataRequest):
         metadata = get_metadata.remote(info.user_info_csv, info.user_goal)
         return Response(json.dumps(metadata), media_type="text/json")
+    
+    @web_app.get("/infer/{prompt}")
+    async def accept_job(prompt: str):
+        call = Model().inference.spawn(prompt)
+        return {"call_id": call.object_id}
+
+    @web_app.get("/result/{call_id}")
+    async def poll_results(call_id: str):
+        function_call = FunctionCall.from_id(call_id)
+        try:
+            image_bytes = function_call.get(timeout=0)
+            return Response(image_bytes, media_type="image/gif")
+        except TimeoutError:
+            http_accepted_code = 202
+            return fastapi.responses.JSONResponse({}, status_code=http_accepted_code)
 
     return web_app
