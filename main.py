@@ -215,6 +215,7 @@ def app():
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
     import json
+    from process_text_and_end_screen import add_text_and_end_screen
 
     web_app = FastAPI()
     origins = [
@@ -244,12 +245,26 @@ def app():
         call = Model().inference.spawn(prompt)
         return {"call_id": call.object_id}
 
+    class VideoRequest(BaseModel):
+        caption: str
+        company_name: str
+        company_description: str
+
     @web_app.get("/result/{call_id}")
-    async def poll_results(call_id: str):
+    async def poll_results(call_id, info: VideoRequest):
         function_call = FunctionCall.from_id(call_id)
         try:
+
             image_bytes = function_call.get(timeout=0)
-            return Response(image_bytes, media_type="video/mp4")
+            with open("output.mp4", "wb") as f:
+                f.write(image_bytes)
+
+            add_text_and_end_screen("output.mp4", info.caption, info.company_name, info.company_description, "final.mp4")
+
+            with open('final.mp4', "rb") as fh:
+                buf = io.BytesIO(fh.read())
+
+            return Response(buf.getvalue(), media_type="video/mp4")
         except TimeoutError:
             http_accepted_code = 202
             return fastapi.responses.JSONResponse({}, status_code=http_accepted_code)
