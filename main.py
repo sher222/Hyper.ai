@@ -128,12 +128,33 @@ class Model:
         return image_bytes
 
 
+openai_img = Image.debian_slim().pip_install("openai")
+
+with openai_img.imports():
+    from fetch_metadata import fetch_content_metadata
+
+@stub.function(
+    mounts=[Mount.from_local_dir("data", remote_path="/root/data")],
+    image=openai_img
+)
+def get_metadata(user_csv: str, goal: str):
+    with open("data/csv.csv", "w") as f:
+        f.write(user_csv)
+
+    return fetch_content_metadata("data/csv.csv", goal)
+
+
 # And this is our entrypoint; where the CLI is invoked. Explore CLI options
 # with: `modal run stable_diffusion_xl.py --prompt 'An astronaut riding a green horse'`
 
 
 @stub.local_entrypoint()
 def main(prompt: str):
+#     csv_content = """preferences,age,gender
+# likes taylor swift,12-16,female
+# likes working out,20-24,male"""
+#     print(get_metadata.remote(csv_content, "download the app sage which is a shopping agent that helps people easily shop and find personalized items"))
+
     image_bytes = Model().inference.remote(prompt)
 
     dir = Path("/tmp/stable-diffusion-xl")
@@ -164,6 +185,7 @@ def app():
     from fastapi import FastAPI
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
+    import json
 
     web_app = FastAPI()
     origins = [
@@ -182,5 +204,18 @@ def app():
         image_bytes = Model().inference.remote(prompt)
 
         return Response(image_bytes, media_type="image/png")
+
+    
+    from pydantic import BaseModel
+
+    class MetadataRequest(BaseModel):
+        user_goal: str
+        user_info_csv: str
+
+    
+    @web_app.post("/metadata/")
+    async def handle_metadata(info: MetadataRequest):
+        metadata = get_metadata.remote(info.user_info_csv, info.user_goal)
+        return Response(json.dumps(metadata), media_type="text/json")
 
     return web_app
