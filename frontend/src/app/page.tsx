@@ -80,6 +80,7 @@ const UserAd = ({
                   src={sceneImage}
                   autoPlay
                   loop
+                  controls
                 />
               )}
             </div>
