@@ -54,6 +54,7 @@ with sdxl_image.imports():
     import torch
     from diffusers import DiffusionPipeline, StableVideoDiffusionPipeline
     from huggingface_hub import snapshot_download
+    import moviepy.editor as mp
 
 # ## Load model and run inference
 #
@@ -143,9 +144,12 @@ class Model:
         frames = self.video_pipeline(image).frames[0]
 
         frames[0].save('output.gif',
-            save_all=True, append_images=frames[1:], optimize=False, duration=100, loop=0)
+            save_all=True, append_images=frames[1:], optimize=False, duration=200, loop=0)
 
-        with open('output.gif', "rb") as fh:
+        clip = mp.VideoFileClip("output.gif")
+        clip.write_videofile("output.mp4")
+
+        with open('output.mp4', "rb") as fh:
             buf = io.BytesIO(fh.read())
 
         return buf.getvalue()
@@ -184,7 +188,7 @@ def main(prompt: str):
     if not dir.exists():
         dir.mkdir(exist_ok=True, parents=True)
 
-    output_path = dir / "output.gif"
+    output_path = dir / "output.mp4"
     print(f"Saving it to {output_path}")
     with open(output_path, "wb") as f:
         f.write(image_bytes)
