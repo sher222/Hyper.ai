@@ -66,7 +66,7 @@ with sdxl_image.imports():
 # online for 4 minutes before spinning down. This can be adjusted for cost/experience trade-offs.
 
 
-@stub.cls(gpu=gpu.A100(memory=80), container_idle_timeout=240, image=sdxl_image)
+@stub.cls(gpu=gpu.A100(memory=80), container_idle_timeout=60*10, image=sdxl_image)
 class Model:
     @build()
     def build(self):
@@ -384,7 +384,7 @@ def app():
                 fail = False
                 try:
                     print(info.artist, info.song_title)
-                    download_music(info.artist, info.song_title, "song.mp4")
+                    download_music(info.artist, info.song_title, "song")
                 except Exception as e:
                     fail = True
                     print(e)
