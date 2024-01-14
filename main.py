@@ -66,7 +66,7 @@ with sdxl_image.imports():
 # online for 4 minutes before spinning down. This can be adjusted for cost/experience trade-offs.
 
 
-@stub.cls(gpu=gpu.A100(memory=80), container_idle_timeout=240, image=sdxl_image)
+@stub.cls(gpu=gpu.A100(memory=80), container_idle_timeout=60*10, image=sdxl_image)
 class Model:
     @build()
     def build(self):
@@ -298,10 +298,10 @@ def app():
 
             link = f"https://www.youtube.com/watch?v={video_id}"
             youtubeObject = YouTube(link)
-            youtubeObject = youtubeObject.streams.filter(only_audio=True).all()[0]
+            youtubeObject = youtubeObject.streams.filter(only_audio=True, file_extension="mp3").all()[0]
 
             try:
-                youtubeObject.download(out_path)
+                youtubeObject.download(filename=out_path, format="")
                 print("downloaded", link)
                 break
             except:
@@ -392,14 +392,14 @@ def app():
                 fail = False
                 try:
                     print(info.artist, info.song_title)
-                    download_music(info.artist, info.song_title, "song.mp4")
+                    download_music(info.artist, info.song_title, "song")
                 except Exception as e:
                     fail = True
                     print(e)
 
                 if not fail:
                     videoclip = VideoFileClip("final.mp4")
-                    audioclip = AudioFileClip("song.mp4")
+                    audioclip = AudioFileClip("song.mp3")
 
                     videoclip.audio = audioclip
                     videoclip.write_videofile("final.mp4", audio_codec="aac", audio_bitrate="192k", codec="libx264")
