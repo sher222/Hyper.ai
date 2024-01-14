@@ -114,9 +114,7 @@ const UserAd = ({
 
 export default function Home() {
   const [companyName, setCompanyName] = useState("Sage");
-  const [companyDescription, setCompanyDescription] = useState(
-    "Sage is a shopping agent that helps people easily shop and find personalized items"
-  );
+  const [companyDescription, setCompanyDescription] = useState("Shop Smarter");
   const [adGoal, setAdGoal] = useState(
     "download the app sage which is a shopping agent that helps people easily shop and find personalized items"
   );
@@ -187,7 +185,7 @@ export default function Home() {
               htmlFor="company_desc"
               className="block text-sm font-medium leading-6 text-gray-900"
             >
-              Company Description
+              Company Slogan
             </label>
             <div className="mt-2">
               <input
@@ -272,7 +270,7 @@ export default function Home() {
       <div className="h-16"></div>
       {generating && metadata === null && (
         <div className="text-xl font-bold text-center">
-          Generating user metadata...
+          Generating content...
         </div>
       )}
       <div className="grid grid-cols-3 gap-x-8 gap-y-8">
