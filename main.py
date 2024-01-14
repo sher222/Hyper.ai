@@ -316,7 +316,7 @@ def app():
         text_clip_width = video_clip.size[0] - 200
         text_clip = TextClip(
             text,
-            fontsize=50,
+            fontsize=70,
             font="Arial-Bold",
             color="white",
             method="caption",
