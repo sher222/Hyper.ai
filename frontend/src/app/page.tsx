@@ -38,6 +38,14 @@ const UserAd = ({
     const call_id = ((await res.json()) as any).call_id;
 
     const try_get = async () => {
+      let song, artist;
+      if (metadata.music.split(": ").length == 2) {
+        song = metadata.music.split(": ")[0];
+        artist = metadata.music.split(": ")[1];
+      } else {
+        song = "";
+        artist = "";
+      }
       const res = await fetch(`${MODAL_ENDPOINT}/result/${call_id}`, {
         method: "POST",
         headers: {
@@ -47,6 +55,8 @@ const UserAd = ({
           caption: metadata.text,
           company_name: companyName,
           company_description: companyDescription,
+          song_title: song,
+          artist: artist,
         }),
       });
       if (res.status === 202) {

@@ -218,6 +218,8 @@ app_img = (
 )
 with app_img.imports():
     from moviepy.editor import *
+    from pytube import YouTube
+    from youtube_search import YoutubeSearch
 
 @stub.function(
     allow_concurrent_inputs=20,
@@ -278,6 +280,35 @@ def app():
     description = "Shop smarter"
     base_video = "output.gif"
     text = "just did a set of app downloads, feelin' pumped"
+
+    def download_music(artist, song_title, out_path):
+        search_term = f"{artist} {song_title} shorts"
+        max_results = 1
+        
+        for i in range(10):
+            video_id = ""
+            results = YoutubeSearch(search_term, max_results=max_results).to_json()
+            v = json.loads(results)["videos"][-1]
+            max_results += 1
+            if "0:20" < v["duration"] and v["duration"] < "0:40":
+                video_id = v["id"]
+            else:
+                continue
+            
+
+            link = f"https://www.youtube.com/watch?v={video_id}"
+            youtubeObject = YouTube(link)
+            youtubeObject = youtubeObject.streams.filter(only_audio=True).all()[0]
+
+            try:
+                youtubeObject.download(out_path)
+                print("downloaded", link)
+                break
+            except:
+                print("An error has occurred")
+                raise RuntimeError()
+        else:
+            raise RuntimeError()
 
 
     def add_text_and_end_screen(base_video, text, company_name, description):
@@ -343,6 +374,8 @@ def app():
         caption: str
         company_name: str
         company_description: str
+        artist: str
+        song_title: str
 
     @web_app.post("/result/{call_id}")
     async def poll_results(call_id, info: VideoRequest):
@@ -354,6 +387,22 @@ def app():
                 f.write(image_bytes)
 
             add_text_and_end_screen("output.mp4", info.caption, info.company_name, info.company_description)
+
+            if not(info.artist == "" or info.song_title == ""):
+                fail = False
+                try:
+                    print(info.artist, info.song_title)
+                    download_music(info.artist, info.song_title, "song.mp4")
+                except Exception as e:
+                    fail = True
+                    print(e)
+
+                if not fail:
+                    videoclip = VideoFileClip("final.mp4")
+                    audioclip = AudioFileClip("song.mp4")
+
+                    videoclip.audio = audioclip
+                    videoclip.write_videofile("final.mp4", audio_codec="aac", audio_bitrate="192k", codec="libx264")
 
             with open('final.mp4', "rb") as fh:
                 buf = io.BytesIO(fh.read())
