@@ -232,6 +232,7 @@ def app():
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
     import json
+    import os
 
     web_app = FastAPI()
     origins = [
@@ -293,7 +294,7 @@ def app():
                     link = f"https://www.youtube.com/watch?v={video_id}"
                     youtubeObject = YouTube(link)
                     youtubeObject = youtubeObject.streams.filter(only_audio=True).filter(file_extension="mp4").first()
-                    youtubeObject.download(out_path)
+                    youtubeObject.download(filename=out_path)
                     print("downloaded", link)
                     break
                 except:
@@ -380,21 +381,21 @@ def app():
 
             add_text_and_end_screen("output.mp4", info.caption, info.company_name, info.company_description)
 
-            if not(info.artist == "" or info.song_title == ""):
-                fail = False
-                try:
-                    print(info.artist, info.song_title)
-                    download_music(info.artist, info.song_title, "song")
-                except Exception as e:
-                    fail = True
-                    print(e)
+            # if not(info.artist == "" or info.song_title == ""):
+            #     fail = False
+            #     try:
+            #         print(info.artist, info.song_title)
+            #         download_music(info.artist, info.song_title, "song")
+            #     except Exception as e:
+            #         fail = True
+            #         print(e)
 
-                if not fail:
-                    videoclip = VideoFileClip("final.mp4")
-                    audioclip = AudioFileClip("song.mp4")
+            #     if not fail:
+            #         videoclip = VideoFileClip("final.mp4")
+            #         audioclip = AudioFileClip("song.mp4")
 
-                    videoclip.audio = audioclip
-                    videoclip.write_videofile("final.mp4", audio_codec="aac", audio_bitrate="192k", codec="libx264")
+            #         videoclip.audio = audioclip
+            #         videoclip.write_videofile("final.mp4", audio_codec="aac", audio_bitrate="192k", codec="libx264")
 
             with open('final.mp4', "rb") as fh:
                 buf = io.BytesIO(fh.read())
