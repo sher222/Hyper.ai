@@ -285,15 +285,16 @@ def app():
         search_term = f"{artist} {song_title} shorts"
         max_results = 1
         
-        for i in range(50):
+        for i in range(10):
             video_id = ""
             results = YoutubeSearch(search_term, max_results=max_results).to_json()
             v = json.loads(results)["videos"][-1]
+            max_results += 1
             if "0:20" < v["duration"] and v["duration"] < "0:40":
                 video_id = v["id"]
+            else:
                 continue
             
-            max_results += 1
 
             link = f"https://www.youtube.com/watch?v={video_id}"
             youtubeObject = YouTube(link)
@@ -305,7 +306,9 @@ def app():
                 break
             except:
                 print("An error has occurred")
-        raise RuntimeError()
+                raise RuntimeError()
+        else:
+            raise RuntimeError()
 
 
     def add_text_and_end_screen(base_video, text, company_name, description):
