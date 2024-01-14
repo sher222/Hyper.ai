@@ -285,12 +285,13 @@ def app():
         search_term = f"{artist} {song_title} shorts"
         max_results = 1
         
-        while True:
+        for i in range(50):
             video_id = ""
             results = YoutubeSearch(search_term, max_results=max_results).to_json()
             v = json.loads(results)["videos"][-1]
             if "0:20" < v["duration"] and v["duration"] < "0:40":
                 video_id = v["id"]
+                continue
             
             max_results += 1
 
@@ -304,6 +305,7 @@ def app():
                 break
             except:
                 print("An error has occurred")
+        raise RuntimeError()
 
 
     def add_text_and_end_screen(base_video, text, company_name, description):
@@ -384,14 +386,21 @@ def app():
             add_text_and_end_screen("output.mp4", info.caption, info.company_name, info.company_description)
 
             if not(info.artist == "" or info.song_title == ""):
-                download_music(info.artist, info.song_title, "song.mp4")
+                fail = False
+                try:
+                    print(info.artist, info.song_title)
+                    download_music(info.artist, info.song_title, "song.mp4")
+                except Exception as e:
+                    fail = True
+                    print(e)
 
-                videoclip = VideoFileClip("final.mp4")
-                audioclip = AudioFileClip("song.mp4")
+                if not fail:
+                    videoclip = VideoFileClip("final.mp4")
+                    audioclip = AudioFileClip("song.mp4")
 
-                new_audioclip = CompositeAudioClip([audioclip])
-                videoclip.audio = new_audioclip
-                videoclip.write_videofile("final.mp4")
+                    new_audioclip = CompositeAudioClip([audioclip])
+                    videoclip.audio = new_audioclip
+                    videoclip.write_videofile("final.mp4", audio_codec="aac", audio_bitrate="192k", codec="libx264")
 
             with open('final.mp4', "rb") as fh:
                 buf = io.BytesIO(fh.read())
