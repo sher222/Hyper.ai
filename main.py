@@ -283,31 +283,23 @@ def app():
 
     def download_music(artist, song_title, out_path):
         search_term = f"{artist} {song_title} shorts"
-        max_results = 1
         
-        for i in range(10):
-            video_id = ""
-            results = YoutubeSearch(search_term, max_results=max_results).to_json()
-            v = json.loads(results)["videos"][-1]
-            max_results += 1
+        results = YoutubeSearch(search_term, max_results=50).to_json()
+        videos  = json.loads(results)["videos"]
+        for v in videos:
             if "0:20" < v["duration"] and v["duration"] < "0:40":
                 video_id = v["id"]
-            else:
-                continue
-            
-
-            link = f"https://www.youtube.com/watch?v={video_id}"
-            youtubeObject = YouTube(link)
-            youtubeObject = youtubeObject.streams.filter(only_audio=True, file_extension="mp4").all()[0]
-
-            try:
-                youtubeObject.download(filename=out_path, format="")
-                print("downloaded", link)
-                break
-            except:
-                print("An error has occurred")
-                raise RuntimeError()
+                try:
+                    link = f"https://www.youtube.com/watch?v={video_id}"
+                    youtubeObject = YouTube(link)
+                    youtubeObject = youtubeObject.streams.filter(only_audio=True).filter(file_extension="mp4").first()
+                    youtubeObject.download(out_path)
+                    print("downloaded", link)
+                    break
+                except:
+                    continue
         else:
+            print("could not find")
             raise RuntimeError()
 
 
