@@ -398,8 +398,7 @@ def app():
                     videoclip = VideoFileClip("final.mp4")
                     audioclip = AudioFileClip("song.mp4")
 
-                    new_audioclip = CompositeAudioClip([audioclip])
-                    videoclip.audio = new_audioclip
+                    videoclip.audio = audioclip
                     videoclip.write_videofile("final.mp4", audio_codec="aac", audio_bitrate="192k", codec="libx264")
 
             with open('final.mp4', "rb") as fh:
