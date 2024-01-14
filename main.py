@@ -298,7 +298,7 @@ def app():
 
             link = f"https://www.youtube.com/watch?v={video_id}"
             youtubeObject = YouTube(link)
-            youtubeObject = youtubeObject.streams.filter(only_audio=True, file_extension="mp3").all()[0]
+            youtubeObject = youtubeObject.streams.filter(only_audio=True, file_extension="mp4").all()[0]
 
             try:
                 youtubeObject.download(filename=out_path, format="")
@@ -399,7 +399,7 @@ def app():
 
                 if not fail:
                     videoclip = VideoFileClip("final.mp4")
-                    audioclip = AudioFileClip("song.mp3")
+                    audioclip = AudioFileClip("song.mp4")
 
                     videoclip.audio = audioclip
                     videoclip.write_videofile("final.mp4", audio_codec="aac", audio_bitrate="192k", codec="libx264")
