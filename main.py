@@ -19,6 +19,7 @@ import io
 from pathlib import Path
 
 from modal import Image, Mount, Stub, asgi_app, build, enter, gpu, method
+from modal.functions import FunctionCall
 
 # ## Define a container image
 #
@@ -41,6 +42,11 @@ sdxl_image = (
         "accelerate~=0.26.1",
         "safetensors~=0.4.1",
     )
+    .apt_install("imagemagick")
+    .run_commands("sed -i '/@/s/^/<!-- /; /@/s/$/ -->/' /etc/ImageMagick-6/policy.xml")
+    .pip_install("moviepy~=1.0.3")
+    .pip_install("pytube")
+    .pip_install("youtube_search")
 )
 
 stub = Stub("stable-diffusion-xl")
@@ -49,6 +55,7 @@ with sdxl_image.imports():
     import torch
     from diffusers import DiffusionPipeline, StableVideoDiffusionPipeline
     from huggingface_hub import snapshot_download
+    import moviepy.editor as mp
 
 # ## Load model and run inference
 #
@@ -138,9 +145,12 @@ class Model:
         frames = self.video_pipeline(image).frames[0]
 
         frames[0].save('output.gif',
-            save_all=True, append_images=frames[1:], optimize=False, duration=40, loop=0)
+            save_all=True, append_images=frames[1:], optimize=False, duration=200, loop=0)
 
-        with open('output.gif', "rb") as fh:
+        clip = mp.VideoFileClip("output.gif")
+        clip.write_videofile("output.mp4")
+
+        with open('output.mp4', "rb") as fh:
             buf = io.BytesIO(fh.read())
 
         return buf.getvalue()
@@ -179,7 +189,7 @@ def main(prompt: str):
     if not dir.exists():
         dir.mkdir(exist_ok=True, parents=True)
 
-    output_path = dir / "output.gif"
+    output_path = dir / "output.mp4"
     print(f"Saving it to {output_path}")
     with open(output_path, "wb") as f:
         f.write(image_bytes)
@@ -195,11 +205,27 @@ def main(prompt: str):
 # We can deploy this with `modal deploy stable_diffusion_xl.py`.
 
 
+app_img = (
+    Image.debian_slim()
+    .apt_install(
+        "libglib2.0-0", "libsm6", "libxrender1", "libxext6", "ffmpeg", "libgl1"
+    )
+    .apt_install("imagemagick")
+    .run_commands("sed -i '/@/s/^/<!-- /; /@/s/$/ -->/' /etc/ImageMagick-6/policy.xml")
+    .pip_install("moviepy~=1.0.3")
+    .pip_install("pytube")
+    .pip_install("youtube_search")
+)
+with app_img.imports():
+    from moviepy.editor import *
+
 @stub.function(
     allow_concurrent_inputs=20,
+    image=app_img,
 )
 @asgi_app()
 def app():
+    import fastapi
     from fastapi import FastAPI
     from fastapi.responses import Response
     from fastapi.middleware.cors import CORSMiddleware
@@ -216,14 +242,6 @@ def app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    @web_app.get("/infer/{prompt}")
-    async def infer(prompt: str):
-        image_bytes = Model().inference.remote(prompt)
-
-        return Response(image_bytes, media_type="image/gif")
-
-    
     from pydantic import BaseModel
 
     class MetadataRequest(BaseModel):
@@ -235,5 +253,114 @@ def app():
     async def handle_metadata(info: MetadataRequest):
         metadata = get_metadata.remote(info.user_info_csv, info.user_goal)
         return Response(json.dumps(metadata), media_type="text/json")
+    
+    @web_app.get("/infer/{prompt}")
+    async def accept_job(prompt: str):
+        call = Model().inference.spawn(prompt)
+        return {"call_id": call.object_id}
+
+
+
+
+
+
+
+
+
+
+
+
+
+    #  "text": "just did a set of app downloads, feelin' pumped",
+    # given the base video and the text, add it on top of the video
+
+    company_name = "Sage"
+    description = "Shop smarter"
+    base_video = "output.gif"
+    text = "just did a set of app downloads, feelin' pumped"
+
+
+    def add_text_and_end_screen(base_video, text, company_name, description):
+        video_clip = VideoFileClip(base_video)
+        text_clip_width = video_clip.size[0] - 200
+        text_clip = TextClip(
+            text,
+            fontsize=50,
+            font="Arial-Bold",
+            color="white",
+            method="caption",
+            stroke_width=2,
+            stroke_color="black",
+            kerning=-2,
+            size=(text_clip_width, None),
+        )
+        text_clip = text_clip.set_duration(video_clip.duration)
+        final_clip = CompositeVideoClip(
+            [video_clip, text_clip.set_pos(("center", 0.55), relative=True)]
+        )
+
+        # Append another video clip to the end of this one
+        video_size = video_clip.size
+        background_clip = ColorClip(size=video_size, color=(255, 255, 255), duration=2)
+        company_name_clip = TextClip(
+            company_name, font="Arial-Bold", fontsize=60, color="black", size=video_size
+        ).set_duration(2)
+        description_clip = TextClip(
+            description,
+            font="Arial",
+            fontsize=30,
+            color="black",
+            size=video_size,
+            method="caption",
+        ).set_duration(2)
+        end_clip = CompositeVideoClip(
+            [
+                background_clip,
+                company_name_clip.set_pos("center"),
+                description_clip.set_pos("center"),
+            ]
+        )
+
+        # Manually adjust the positions
+        company_name_height = company_name_clip.size[1]
+        description_height = description_clip.size[1]
+        video_height = background_clip.size[1]
+        company_name_y = (video_height - company_name_height - description_height) / 2 + 240
+        description_y = company_name_y + 60
+        end_clip = CompositeVideoClip(
+            [
+                background_clip,
+                company_name_clip.set_position(("center", company_name_y)),
+                description_clip.set_position(("center", description_y)),
+            ]
+        )
+
+        final_clip = concatenate_videoclips([final_clip, end_clip])
+        final_clip.write_videofile("final.mp4")
+
+
+    class VideoRequest(BaseModel):
+        caption: str
+        company_name: str
+        company_description: str
+
+    @web_app.post("/result/{call_id}")
+    async def poll_results(call_id, info: VideoRequest):
+        function_call = FunctionCall.from_id(call_id)
+        try:
+
+            image_bytes = function_call.get(timeout=0)
+            with open("output.mp4", "wb") as f:
+                f.write(image_bytes)
+
+            add_text_and_end_screen("output.mp4", info.caption, info.company_name, info.company_description)
+
+            with open('final.mp4', "rb") as fh:
+                buf = io.BytesIO(fh.read())
+
+            return Response(buf.getvalue(), media_type="video/mp4")
+        except TimeoutError:
+            http_accepted_code = 202
+            return fastapi.responses.JSONResponse({}, status_code=http_accepted_code)
 
     return web_app

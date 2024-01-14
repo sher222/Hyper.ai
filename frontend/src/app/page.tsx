@@ -14,14 +14,19 @@ type AdMetadata = {
   music: string;
   text: string;
   "video-prompt": string;
+  name: string;
 };
 
 const UserAd = ({
   metadata,
   userNum,
+  companyName,
+  companyDescription,
 }: {
   metadata: AdMetadata;
   userNum: number;
+  companyName: string;
+  companyDescription: string;
 }) => {
   const [sceneImage, setSceneImage] = useState<string | null>(null);
 
@@ -30,9 +35,33 @@ const UserAd = ({
     const res = await fetch(
       `${MODAL_ENDPOINT}/infer/${metadata["video-prompt"]}`
     );
+    const call_id = ((await res.json()) as any).call_id;
 
-    const blob = await res.blob();
-    setSceneImage(URL.createObjectURL(blob));
+    const try_get = async () => {
+      const res = await fetch(`${MODAL_ENDPOINT}/result/${call_id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          caption: metadata.text,
+          company_name: companyName,
+          company_description: companyDescription,
+        }),
+      });
+      if (res.status === 202) {
+        // still loading
+        setTimeout(try_get, 5000);
+      } else if (res.status === 200) {
+        const blob = await res.blob();
+        setSceneImage(URL.createObjectURL(blob));
+      } else {
+        console.error("failed to fetch");
+        console.error(res);
+      }
+    };
+
+    setTimeout(try_get, 5000);
   };
 
   useEffect(() => {
@@ -41,24 +70,27 @@ const UserAd = ({
 
   return (
     <div>
-      <h2 className="text-xl font-bold mb-2">User {userNum + 1}</h2>
+      <h2 className="text-xl font-bold mb-2">{metadata.name}</h2>
       <div>
         {sceneImage !== null && (
           <div>
-            <div className="aspect-square flex items-center justify-center rounded-md bg-gray-50">
+            <div className="aspect-[1024/576] flex items-center justify-center rounded-md bg-gray-50">
               {sceneImage === "" ? (
                 <span>Generating Image...</span>
               ) : (
-                <img
+                <video
                   className="mx-auto rounded-md"
                   src={sceneImage}
-                  alt="generated scene"
+                  autoPlay
+                  loop
+                  controls
                 />
               )}
             </div>
           </div>
         )}
       </div>
+      <div className="mt-1 text-sm">{metadata.text}</div>
       <div className="text-gray-600 mt-3 text-sm">{metadata.idea}</div>
 
       <div className="h-3"></div>
@@ -102,6 +134,11 @@ export default function HomeWrapper(){
   )
 }
 export function Home() {
+export default function Home() {
+  const [companyName, setCompanyName] = useState("Sage");
+  const [companyDescription, setCompanyDescription] = useState(
+    "Sage is a shopping agent that helps people easily shop and find personalized items"
+  );
   const [adGoal, setAdGoal] = useState(
     "download the app sage which is a shopping agent that helps people easily shop and find personalized items"
   );
@@ -150,6 +187,40 @@ export function Home() {
             handleSubmit();
           }}
         >
+          <div className="">
+            <label
+              htmlFor="company_name"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Company Name
+            </label>
+            <div className="mt-2">
+              <input
+                id="company_name"
+                name="company_name"
+                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="">
+            <label
+              htmlFor="company_desc"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Company Description
+            </label>
+            <div className="mt-2">
+              <input
+                id="company_desc"
+                name="company_desc"
+                className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+                value={companyDescription}
+                onChange={(e) => setCompanyDescription(e.target.value)}
+              />
+            </div>
+          </div>
           <div className="">
             <label
               htmlFor="goal"
@@ -230,10 +301,16 @@ export function Home() {
           Generating user metadata...
         </div>
       )}
-      <div className="grid grid-cols-5 gap-x-8">
+      <div className="grid grid-cols-3 gap-x-8 gap-y-8">
         {metadata !== null &&
           metadata.map((user, i) => (
-            <UserAd metadata={user} key={i} userNum={i} />
+            <UserAd
+              metadata={user}
+              key={i}
+              userNum={i}
+              companyName={companyName}
+              companyDescription={companyDescription}
+            />
           ))}
       </div>
     </div>

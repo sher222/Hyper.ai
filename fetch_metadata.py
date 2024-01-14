@@ -18,9 +18,11 @@ def fetch_content_metadata(csv_file_path, user_goal):
 
     user_preferences = []
     user_demographics = []
+    user_names = []
     with open(csv_file_path, newline="") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
+            user_names.append(row["Name"])
             user_preferences.append(row["preferences"])
             user_demographics.append(row["age"] + " " + row["gender"])
 
@@ -44,6 +46,7 @@ def fetch_content_metadata(csv_file_path, user_goal):
         )
         response_string = response.choices[0].message.content
         response_dict = json.loads(response_string)
+        response_dict["name"] = user_names[i]
         resulting_content_metadata.append(response_dict)
     
     return resulting_content_metadata
